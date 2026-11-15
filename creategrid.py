@@ -102,7 +102,7 @@ class CreateGridWindow(QMainWindow):
         self.rows = rows
         self.cols = cols
         self.squares: list[list[LetterSquare]] = []
-        self.setWindowTitle("Solvetungle")
+        self.setWindowTitle("Wordsearch Solver")
         self.setStyleSheet(STYLE)
 
         self.pages = QStackedWidget()

@@ -1,4 +1,4 @@
-<title>Solvetungle</title>
+<title>Wordsearch Solver</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -238,7 +238,7 @@
 
 <main>
   <header>
-    <h1>Solvetungle</h1>
+    <h1>Wordsearch Solver</h1>
     <p class="sub">Type the letters from your puzzle. Solve finds every word you can trace through touching squares.</p>
   </header>
 
@@ -326,10 +326,9 @@
   function saveState() {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...state, sort: sortMode }));
-    } catch (e) { /* storage unavailable: nothing to do */ }
+    } catch (e) {  }
   }
 
-  // ---------- word bank ----------
   fetch("words.txt")
     .then((r) => {
       if (!r.ok) throw new Error(r.status);

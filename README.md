@@ -1,4 +1,4 @@
-# Word search solver
+# Wordsearch solver
 
 A solver for word-grid puzzles. Type the letters from a puzzle into the grid and it lists every English word you can trace through touching squares, longest first.
 

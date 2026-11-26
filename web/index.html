@@ -156,6 +156,42 @@
     border-color: var(--tile-removed);
     color: transparent;
   }
+  .tile.path { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+  .tile.path-start { border-color: var(--ink); }
+  .board { position: relative; }
+  .path-line {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    overflow: visible;
+  }
+  .path-line polyline {
+    fill: none;
+    stroke: var(--ink);
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    opacity: 0.45;
+  }
+
+  .search { display: flex; flex-direction: column; gap: 6px; }
+  .search input {
+    font: 600 1rem var(--font-display);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 0 12px;
+    min-height: 44px;
+    width: 100%;
+  }
+  .search input::placeholder { text-transform: none; letter-spacing: 0; font-family: var(--font-body); font-weight: 400; color: var(--muted); }
+  .search input:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+  .search-msg { margin: 0; font-size: 0.85rem; color: var(--muted); min-height: 1.3em; }
+
   .hint { color: var(--muted); font-size: 0.85rem; margin: 0; text-align: center; }
   .status {
     display: flex;
@@ -259,6 +295,7 @@
 
       <div class="board" id="board">
         <div class="grid" id="grid"></div>
+        <svg class="path-line" id="path-line" aria-hidden="true"></svg>
       </div>
 
       <p class="hint" id="hint">Double-tap or press and hold a square to remove it. Do it again to bring it back.</p>
@@ -266,6 +303,14 @@
       <div class="status">
         <span id="fill-status"></span>
         <span id="bank-status">Loading word list…</span>
+      </div>
+
+      <div class="search" id="search" hidden>
+        <label class="field" for="search-input">Find a word</label>
+        <input id="search-input" type="search" autocomplete="off" autocapitalize="characters"
+               autocorrect="off" spellcheck="false" enterkeyhint="done"
+               placeholder="Type a word to see its path">
+        <p class="search-msg" id="search-msg" aria-live="polite"></p>
       </div>
 
       <button type="button" class="primary" id="solve" hidden>Solve</button>
@@ -498,7 +543,66 @@
     $("solve").disabled = !bank;
     $("solve").textContent = bank ? "Solve" : "Loading word list…";
     $("example-note").hidden = !state.example;
+    runSearch();
   }
+
+  // ---------- find a word ----------
+  let pathCells = []; // tile indexes of the highlighted word, in order
+
+  function currentGrid() {
+    const grid = [];
+    for (let r = 0; r < state.rows; r++) {
+      const row = [];
+      for (let c = 0; c < state.cols; c++) {
+        const i = r * state.cols + c;
+        row.push(state.removed[i] ? null : state.letters[i]);
+      }
+      grid.push(row);
+    }
+    return grid;
+  }
+
+  function runSearch() {
+    const full = isFull();
+    $("search").hidden = !full;
+    const word = $("search-input").value.replace(/[^a-z]/gi, "").toUpperCase();
+    let path = null;
+    let msg = "";
+    if (full && word) {
+      path = findPath(currentGrid(), word);
+      msg = path
+        ? `Found ${word}, starting at row ${path[0][0] + 1}, column ${path[0][1] + 1}.`
+        : `${word} can't be traced through touching squares in this grid.`;
+    }
+    $("search-msg").textContent = msg;
+    pathCells = path ? path.map(([r, c]) => r * state.cols + c) : [];
+    tiles.forEach((tile, i) => {
+      tile.classList.toggle("path", pathCells.includes(i));
+      tile.classList.toggle("path-start", pathCells[0] === i);
+    });
+    drawPath();
+  }
+
+  function drawPath() {
+    const svg = $("path-line");
+    svg.innerHTML = "";
+    if (pathCells.length < 2 || !boardEl.clientWidth) return;
+    svg.setAttribute("viewBox", `0 0 ${boardEl.clientWidth} ${boardEl.clientHeight}`);
+    const points = pathCells.map((i) => {
+      const t = tiles[i];
+      return `${t.offsetLeft + t.offsetWidth / 2},${t.offsetTop + t.offsetHeight / 2}`;
+    });
+    const line = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
+    line.setAttribute("points", points.join(" "));
+    line.setAttribute("stroke-width", Math.max(3, tiles[0].offsetWidth * 0.12));
+    svg.appendChild(line);
+  }
+  new ResizeObserver(drawPath).observe(boardEl);
+
+  $("search-input").addEventListener("input", runSearch);
+  $("search-input").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") $("search-input").blur(); // close the phone keyboard
+  });
 
   $("rows").addEventListener("change", () => resize(+$("rows").value, state.cols));
   $("cols").addEventListener("change", () => resize(state.rows, +$("cols").value));
@@ -510,6 +614,7 @@
       removed: Array(state.rows * state.cols).fill(false),
       example: false,
     };
+    $("search-input").value = "";
     buildGrid();
     tiles[0].focus();
   });
@@ -518,16 +623,7 @@
   // ---------- results ----------
   function solve() {
     if (!bank || !isFull()) return;
-    const grid = [];
-    for (let r = 0; r < state.rows; r++) {
-      const row = [];
-      for (let c = 0; c < state.cols; c++) {
-        const i = r * state.cols + c;
-        row.push(state.removed[i] ? null : state.letters[i]);
-      }
-      grid.push(row);
-    }
-    foundWords = findWords(grid, bank);
+    foundWords = findWords(currentGrid(), bank);
     renderResults();
     showResults();
   }

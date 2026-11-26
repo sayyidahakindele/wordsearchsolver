@@ -1,3 +1,5 @@
+from collections import Counter
+
 from wordbank import WordBank, get_word_bank
 
 Cell = tuple[int, int]
@@ -40,6 +42,38 @@ def find_words(cells: dict[Cell, dict], bank: WordBank) -> set[str]:
     for start in cells:
         walk(start, "", set())
     return found
+
+
+def find_path(grid: list[list[str | None]], word: str) -> list[Cell] | None:
+    """The cells that spell `word` by walking between adjacent cells (each used at most once),
+    in order, or None if it can't be traced. Doesn't check the word list."""
+    word = word.upper()
+    cells = build_cells(grid)
+    if not word or len(word) > len(cells):
+        return None
+    # Quick exit when the grid doesn't have enough of some letter.
+    have = Counter(cell["letter"].upper() for cell in cells.values())
+    if any(have[ch] < n for ch, n in Counter(word).items()):
+        return None
+
+    path: list[Cell] = []
+
+    def walk(pos: Cell, i: int) -> bool:
+        if cells[pos]["letter"].upper() != word[i]:
+            return False
+        path.append(pos)
+        if i == len(word) - 1:
+            return True
+        for neighbor in cells[pos]["neighbors"]:
+            if neighbor not in path and walk(neighbor, i + 1):
+                return True
+        path.pop()
+        return False
+
+    for start in cells:
+        if walk(start, 0):
+            return path
+    return None
 
 
 def group_by_length(words: set[str]) -> dict[str, list[str]]:

@@ -1,5 +1,5 @@
-from PySide6.QtCore import QRegularExpression, Qt, Signal
-from PySide6.QtGui import QFont, QRegularExpressionValidator
+from PySide6.QtCore import QPointF, QRegularExpression, Qt, Signal
+from PySide6.QtGui import QColor, QFont, QPainter, QPen, QPolygonF, QRegularExpressionValidator
 from PySide6.QtWidgets import (
     QApplication,
     QComboBox,
@@ -15,7 +15,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from solve import group_by_length, group_by_letter, solve
+from solve import find_path, group_by_length, group_by_letter, solve
 
 # Options in the results page's Sort drop-down: label -> grouping function.
 SORT_OPTIONS = {
@@ -41,6 +41,19 @@ QLineEdit:focus {
 QLineEdit[removed="true"] {
     background-color: #555;
     border: 2px dashed #333;
+}
+QLineEdit[path="on"], QLineEdit[path="start"] {
+    background-color: #4a90d9;
+    border-color: #2c6db5;
+    color: #ffffff;
+}
+QLineEdit[path="start"] {
+    border: 3px solid #172030;
+}
+QLineEdit#searchBox {
+    background-color: #ffffff;
+    padding: 6px;
+    font-size: 16px;
 }
 QPushButton#solveButton, QPushButton#backButton {
     padding: 8px;
@@ -96,6 +109,32 @@ class LetterSquare(QLineEdit):
         self.removed_changed.emit()
 
 
+class PathOverlay(QWidget):
+    """Draws a line through the squares of a found word, on top of the grid."""
+
+    def __init__(self, parent: QWidget):
+        super().__init__(parent)
+        self.setAttribute(Qt.WA_TransparentForMouseEvents)
+        self.squares: list[LetterSquare] = []
+
+    def set_path(self, squares: list[LetterSquare]):
+        self.squares = squares
+        self.setGeometry(self.parentWidget().rect())
+        self.raise_()
+        self.update()
+
+    def paintEvent(self, event):
+        if len(self.squares) < 2:
+            return
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        pen = QPen(QColor(23, 32, 48, 115), max(3, self.squares[0].width() * 0.12))
+        pen.setCapStyle(Qt.RoundCap)
+        pen.setJoinStyle(Qt.RoundJoin)
+        painter.setPen(pen)
+        painter.drawPolyline(QPolygonF([QPointF(sq.geometry().center()) for sq in self.squares]))
+
+
 class CreateGridWindow(QMainWindow):
     def __init__(self, rows: int = DEFAULT_ROWS, cols: int = DEFAULT_COLS):
         super().__init__()
@@ -135,6 +174,22 @@ class CreateGridWindow(QMainWindow):
         self.grid_holder = QVBoxLayout()
         layout.addLayout(self.grid_holder)
         self.grid_widget: QWidget | None = None
+
+        # "Find a word" box: shown once every square has a letter.
+        self.search_panel = QWidget()
+        search_layout = QVBoxLayout(self.search_panel)
+        search_layout.setContentsMargins(0, 8, 0, 0)
+        self.search_box = QLineEdit()
+        self.search_box.setObjectName("searchBox")
+        self.search_box.setPlaceholderText("Find a word: type it to see its path")
+        self.search_box.setValidator(QRegularExpressionValidator(QRegularExpression("[A-Za-z]*")))
+        self.search_box.textChanged.connect(self.update_search)
+        self.search_message = QLabel()
+        self.search_message.setWordWrap(True)
+        search_layout.addWidget(self.search_box)
+        search_layout.addWidget(self.search_message)
+        self.search_panel.setVisible(False)
+        layout.addWidget(self.search_panel)
 
         self.solve_button = QPushButton("Solve")
         self.solve_button.setObjectName("solveButton")
@@ -178,9 +233,10 @@ class CreateGridWindow(QMainWindow):
                 grid.addWidget(sq, r, c)
                 row.append(sq)
             self.squares.append(row)
+        self.path_overlay = PathOverlay(self.grid_widget)
         self.grid_holder.addWidget(self.grid_widget, alignment=Qt.AlignCenter)
 
-        self.solve_button.setVisible(False)
+        self.update_solve_button()
         self.squares[0][0].setFocus()
         self.adjustSize()
 
@@ -203,7 +259,33 @@ class CreateGridWindow(QMainWindow):
         self.update_solve_button()
 
     def update_solve_button(self):
-        self.solve_button.setVisible(self.is_full())
+        full = self.is_full()
+        self.solve_button.setVisible(full)
+        self.search_panel.setVisible(full)
+        self.update_search()
+
+    def update_search(self):
+        """Highlight the path of the word typed in the search box, if the grid has one."""
+        word = self.search_box.text().upper()
+        path = find_path(self.letters(), word) if word and self.is_full() else None
+        if not word or not self.is_full():
+            self.search_message.setText("")
+        elif path:
+            r, c = path[0]
+            self.search_message.setText(f"Found {word}, starting at row {r + 1}, column {c + 1}.")
+        else:
+            self.search_message.setText(f"{word} can't be traced through touching squares in this grid.")
+
+        on_path = path or []
+        for row in self.squares:
+            for sq in row:
+                pos = (sq.row, sq.col)
+                value = "start" if on_path and pos == on_path[0] else "on" if pos in on_path else ""
+                if sq.property("path") != value:
+                    sq.setProperty("path", value)
+                    sq.style().unpolish(sq)
+                    sq.style().polish(sq)
+        self.path_overlay.set_path([self.squares[r][c] for r, c in on_path])
 
     def focus_next(self, square: LetterSquare):
         """Move the cursor to the next square that hasn't been removed."""

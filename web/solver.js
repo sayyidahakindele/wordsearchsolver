@@ -61,6 +61,42 @@ function findWords(grid, bank) {
   return found;
 }
 
+/**
+ * The cells [row, col] that spell `word` by walking between adjacent cells (each used at most
+ * once), in order, or null if it can't be traced. Doesn't check the word list.
+ */
+function findPath(grid, word) {
+  word = word.toUpperCase();
+  const cells = buildCells(grid);
+  if (!word || word.length > cells.size) return null;
+  // Quick exit when the grid doesn't have enough of some letter.
+  const have = new Map();
+  for (const { letter } of cells.values()) have.set(letter, (have.get(letter) || 0) + 1);
+  const need = new Map();
+  for (const ch of word) need.set(ch, (need.get(ch) || 0) + 1);
+  for (const [ch, n] of need) if ((have.get(ch) || 0) < n) return null;
+
+  const path = [];
+  const used = new Set();
+  function walk(key, i) {
+    if (cells.get(key).letter !== word[i]) return false;
+    path.push(key);
+    used.add(key);
+    if (i === word.length - 1) return true;
+    for (const next of cells.get(key).neighbors) {
+      if (!used.has(next) && walk(next, i + 1)) return true;
+    }
+    path.pop();
+    used.delete(key);
+    return false;
+  }
+
+  for (const key of cells.keys()) {
+    if (walk(key, 0)) return path.map((k) => k.split(",").map(Number));
+  }
+  return null;
+}
+
 /** Group by length (longest first), alphabetical within each group. */
 function groupByLength(words) {
   const groups = new Map();
@@ -89,5 +125,5 @@ function groupByLetter(words) {
 }
 
 if (typeof module !== "undefined") {
-  module.exports = { buildWordBank, buildCells, findWords, groupByLength, groupByLetter };
+  module.exports = { buildWordBank, buildCells, findWords, findPath, groupByLength, groupByLetter };
 }

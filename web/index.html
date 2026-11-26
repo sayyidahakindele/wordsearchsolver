@@ -125,7 +125,7 @@
   .grid {
     display: grid;
     grid-template-columns: repeat(var(--cols), 1fr);
-    gap: clamp(4px, 1.6cqw, 10px);
+    gap: clamp(2px, calc(16cqw / var(--cols)), 10px);
   }
   .tile {
     aspect-ratio: 1;
@@ -134,7 +134,7 @@
     max-width: 100%;
     border: 2px solid var(--tile-edge);
     border-bottom-width: 4px;
-    border-radius: 10px;
+    border-radius: clamp(3px, calc(40cqw / var(--cols)), 10px);
     background: var(--tile);
     color: var(--ink);
     text-align: center;
@@ -295,7 +295,7 @@
 <script src="solver.js"></script>
 <script>
 (() => {
-  const SIZE_CHOICES = [2, 3, 4, 5, 6, 7, 8];
+  const SIZE_CHOICES = Array.from({ length: 17 }, (_, i) => i + 4); // 4 to 20
   const EXAMPLE = { rows: 4, cols: 4, letters: "SERSPATGLINESERS".split(""), removed: Array(16).fill(false) };
   const STORAGE_KEY = "solvetungle-state";
   const LONG_PRESS_MS = 450;
@@ -314,7 +314,8 @@
   function loadState() {
     try {
       const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
-      if (saved && saved.letters && saved.letters.length === saved.rows * saved.cols) {
+      if (saved && saved.letters && saved.letters.length === saved.rows * saved.cols
+          && SIZE_CHOICES.includes(saved.rows) && SIZE_CHOICES.includes(saved.cols)) {
         if (!Array.isArray(saved.removed) || saved.removed.length !== saved.letters.length) {
           saved.removed = Array(saved.letters.length).fill(false);
         }

@@ -63,16 +63,16 @@ class LetterSquare(QLineEdit):
 
     removed_changed = Signal()
 
-    def __init__(self, row: int, col: int):
+    def __init__(self, row: int, col: int, size: int = SQUARE_SIZE):
         super().__init__()
         self.row = row
         self.col = col
         self.removed = False
         self.saved_letter = ""
         self.setMaxLength(1)
-        self.setFixedSize(SQUARE_SIZE, SQUARE_SIZE)
+        self.setFixedSize(size, size)
         self.setAlignment(Qt.AlignCenter)
-        self.setFont(QFont("Arial", 28, QFont.Bold))
+        self.setFont(QFont("Arial", max(8, round(28 * size / SQUARE_SIZE)), QFont.Bold))
         self.setValidator(QRegularExpressionValidator(QRegularExpression("[A-Za-z]")))
 
     def mousePressEvent(self, event):
@@ -168,10 +168,11 @@ class CreateGridWindow(QMainWindow):
         grid.setSpacing(6)
         grid.setContentsMargins(0, 0, 0, 0)
         self.squares = []
+        size = self.square_size()
         for r in range(self.rows):
             row = []
             for c in range(self.cols):
-                sq = LetterSquare(r, c)
+                sq = LetterSquare(r, c, size)
                 sq.textEdited.connect(lambda text, s=sq: self.on_letter_entered(s, text))
                 sq.removed_changed.connect(self.update_solve_button)
                 grid.addWidget(sq, r, c)
@@ -182,6 +183,18 @@ class CreateGridWindow(QMainWindow):
         self.solve_button.setVisible(False)
         self.squares[0][0].setFocus()
         self.adjustSize()
+
+    def square_size(self) -> int:
+        """Largest square size (up to SQUARE_SIZE) that lets the whole grid fit on screen."""
+        screen = self.screen() or QApplication.primaryScreen()
+        if screen is None:
+            return SQUARE_SIZE
+        avail = screen.availableGeometry()
+        spacing = 6
+        # Leave room for the window frame, the size drop-downs and the Solve button.
+        fit_w = (avail.width() - 80 - spacing * (self.cols - 1)) // self.cols
+        fit_h = (avail.height() - 220 - spacing * (self.rows - 1)) // self.rows
+        return max(20, min(SQUARE_SIZE, fit_w, fit_h))
 
     def on_letter_entered(self, square: LetterSquare, text: str):
         if text:

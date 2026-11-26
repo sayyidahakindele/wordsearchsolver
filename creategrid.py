@@ -43,16 +43,16 @@ SQUARE_SIZE = 80
 # Same colours as the web version.
 THEMES = {
     "light": {
-        "bg": "#f4efe3", "surface": "#ffffff", "ink": "#172030", "muted": "#586477",
-        "line": "#c7cfdc", "accent": "#2c55e0", "accent_ink": "#ffffff",
+        "bg": "#f4efe3", "surface": "#fffdf7", "ink": "#26231e", "muted": "#7b7366",
+        "line": "#e2dac9", "accent": "#9b783d", "accent_ink": "#ffffff",
         "solve": "#9b783d", "solve_ink": "#ffffff",
-        "tile": "#fffdf7", "tile_edge": "#b9c3d3", "removed": "#3a4354",
+        "tile": "#fffdf7", "tile_side": "#ddd3bf", "tile_edge": "#ddd3bf", "removed": "#cfcdc9",
     },
     "dark": {
-        "bg": "#1b1c1e", "surface": "#171d27", "ink": "#e6eaf1", "muted": "#9aa5b6",
-        "line": "#2e3746", "accent": "#7896ff", "accent_ink": "#0d1220",
-        "solve": "#7896ff", "solve_ink": "#0d1220",
-        "tile": "#1e2532", "tile_edge": "#3a4558", "removed": "#0a0d12",
+        "bg": "#1b1c1e", "surface": "#242527", "ink": "#f1eee8", "muted": "#a8a49c",
+        "line": "#36373a", "accent": "#e0b467", "accent_ink": "#1b1c1e",
+        "solve": "#e0b467", "solve_ink": "#1b1c1e",
+        "tile": "#343537", "tile_side": "#3d3e41", "tile_edge": "#8f8d89", "removed": "#121314",
     },
 }
 
@@ -60,9 +60,9 @@ STYLE = Template("""
 QLineEdit {
     background-color: $tile;
     color: $ink;
-    border: 2px solid $tile_edge;
-    border-bottom-width: 4px;
-    border-radius: 8px;
+    border: 1px solid $tile_side;
+    border-bottom: 4px solid $tile_edge;
+    border-radius: 12px;
 }
 QLineEdit:focus {
     background-color: $surface;
@@ -70,7 +70,7 @@ QLineEdit:focus {
 }
 QLineEdit[removed="true"] {
     background-color: $removed;
-    border: 2px dashed $tile_edge;
+    border: 2px dashed $tile_side;
 }
 QLineEdit[path="on"], QLineEdit[path="start"] {
     background-color: $accent;
@@ -111,11 +111,13 @@ QPushButton#solveButton, QPushButton#backButton {
     font-size: 16px;
 }
 QLabel#resultsTitle {
-    font-size: 18px;
+    font-family: Georgia, serif;
+    font-size: 20px;
     font-weight: bold;
 }
 QLabel.groupTitle {
-    font-size: 14px;
+    font-family: Georgia, serif;
+    font-size: 16px;
     font-weight: bold;
     margin-top: 8px;
 }
@@ -136,7 +138,7 @@ class LetterSquare(QLineEdit):
         self.setMaxLength(1)
         self.setFixedSize(size, size)
         self.setAlignment(Qt.AlignCenter)
-        self.setFont(QFont("Arial", max(8, round(28 * size / SQUARE_SIZE)), QFont.Bold))
+        self.setFont(QFont("Georgia", max(8, round(28 * size / SQUARE_SIZE)), QFont.Bold))
         self.setValidator(QRegularExpressionValidator(QRegularExpression("[A-Za-z]")))
 
     def mousePressEvent(self, event):

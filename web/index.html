@@ -2,38 +2,41 @@
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=Inter:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700;9..144,800&family=Inter:wght@400;500;600&display=swap">
 <style>
-  /* Layout: one narrow column, the letter grid as the centrepiece; results replace the grid in place. */
+  /* Layout: the letter grid on the left, the word list beside it (below it on phones). Warm paper look with serif letters. */
   :root {
     --bg: #f4efe3;
-    --surface: #ffffff;
-    --ink: #172030;
-    --muted: #586477;
-    --line: #c7cfdc;
-    --accent: #2c55e0;
+    --surface: #fffdf7;
+    --ink: #26231e;
+    --muted: #7b7366;
+    --line: #e2dac9;
+    --accent: #9b783d;
     --accent-ink: #ffffff;
     --tile: #fffdf7;
     --solve: #9b783d;
     --solve-ink: #ffffff;
-    --tile-edge: #b9c3d3;
-    --tile-removed: #3a4354;
-    --tile-removed-stripe: #4b5568;
-    --font-display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+    --tile-edge: #ddd3bf;
+    --tile-side: #ddd3bf;
+    --tile-removed: #cfcdc9;
+    --tile-removed-stripe: #c4c2bd;
+    --font-display: "Fraunces", Georgia, "Times New Roman", serif;
     --font-body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
-      --bg: #1b1c1e; --surface: #171d27; --ink: #e6eaf1; --muted: #9aa5b6; --line: #2e3746;
-      --accent: #7896ff; --accent-ink: #0d1220; --solve: #7896ff; --solve-ink: #0d1220; --tile: #1e2532; --tile-edge: #3a4558;
-      --tile-removed: #0a0d12; --tile-removed-stripe: #1b212c;
+      --bg: #1b1c1e; --surface: #242527; --ink: #f1eee8; --muted: #a8a49c; --line: #36373a;
+      --accent: #e0b467; --accent-ink: #1b1c1e; --solve: #e0b467; --solve-ink: #1b1c1e;
+      --tile: #343537; --tile-side: #3d3e41; --tile-edge: #8f8d89;
+      --tile-removed: #121314; --tile-removed-stripe: #1e1f21;
       color-scheme: dark;
     }
   }
   :root[data-theme="dark"] {
-    --bg: #1b1c1e; --surface: #171d27; --ink: #e6eaf1; --muted: #9aa5b6; --line: #2e3746;
-    --accent: #7896ff; --accent-ink: #0d1220; --solve: #7896ff; --solve-ink: #0d1220; --tile: #1e2532; --tile-edge: #3a4558;
-    --tile-removed: #0a0d12; --tile-removed-stripe: #1b212c;
+    --bg: #1b1c1e; --surface: #242527; --ink: #f1eee8; --muted: #a8a49c; --line: #36373a;
+    --accent: #e0b467; --accent-ink: #1b1c1e; --solve: #e0b467; --solve-ink: #1b1c1e;
+    --tile: #343537; --tile-side: #3d3e41; --tile-edge: #8f8d89;
+    --tile-removed: #121314; --tile-removed-stripe: #1e1f21;
     color-scheme: dark;
   }
 
@@ -136,9 +139,9 @@
     width: 100%;
     min-width: 0;
     max-width: 100%;
-    border: 2px solid var(--tile-edge);
-    border-bottom-width: 4px;
-    border-radius: clamp(3px, calc(40cqw / var(--cols)), 10px);
+    border: 1px solid var(--tile-side);
+    border-bottom: 4px solid var(--tile-edge);
+    border-radius: clamp(4px, calc(56cqw / var(--cols)), 16px);
     background: var(--tile);
     color: var(--ink);
     text-align: center;

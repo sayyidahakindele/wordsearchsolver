@@ -37,7 +37,7 @@ SORT_OPTIONS = {
 DEFAULT_ROWS = 4
 DEFAULT_COLS = 4
 SIZE_CHOICES = range(4, 21)  # sizes offered in the Rows and Columns drop-downs
-SQUARE_ONLY_ABOVE = 12  # a grid with more rows or columns than this must be square
+SQUARE_ONLY_ABOVE = 9  # a grid with more rows or columns than this must be square
 SQUARE_SIZE = 80
 
 # Same colours as the web version.

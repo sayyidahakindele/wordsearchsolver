@@ -1,4 +1,4 @@
-// Word bank and grid solver. Same logic as wordbank.py and solve.py in the desktop app.
+// Word bank and grid solver.
 
 const DIRECTIONS = [[-1, -1], [-1, 0], [-1, 1], [0, -1], [0, 1], [1, -1], [1, 0], [1, 1]];
 

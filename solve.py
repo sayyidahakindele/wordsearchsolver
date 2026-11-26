@@ -5,12 +5,8 @@ Cell = tuple[int, int]
 # All 8 directions, including diagonals.
 DIRECTIONS = [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)]
 
-
+# Maps each cell to its valid neighbors
 def build_cells(grid: list[list[str | None]]) -> dict[Cell, dict]:
-    """Map each (row, col) to its letter and its adjacent cells' letters.
-
-    A cell set to None has been removed: it's left out, and no cell counts it as a neighbour.
-    """
     rows, cols = len(grid), len(grid[0])
     cells: dict[Cell, dict] = {}
     for r in range(rows):

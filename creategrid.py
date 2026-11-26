@@ -25,7 +25,7 @@ SORT_OPTIONS = {
 
 DEFAULT_ROWS = 4
 DEFAULT_COLS = 4
-SIZE_CHOICES = range(2, 9)  # sizes offered in the Rows and Columns drop-downs
+SIZE_CHOICES = range(4, 21)  # sizes offered in the Rows and Columns drop-downs
 SQUARE_SIZE = 80
 
 STYLE = """

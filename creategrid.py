@@ -26,6 +26,7 @@ SORT_OPTIONS = {
 DEFAULT_ROWS = 4
 DEFAULT_COLS = 4
 SIZE_CHOICES = range(4, 21)  # sizes offered in the Rows and Columns drop-downs
+SQUARE_ONLY_ABOVE = 12  # a grid with more rows or columns than this must be square
 SQUARE_SIZE = 80
 
 STYLE = """
@@ -208,6 +209,13 @@ class CreateGridWindow(QMainWindow):
         return box
 
     def on_size_changed(self):
+        changed, other = (self.rows_box, self.cols_box) if self.sender() is self.rows_box else (self.cols_box, self.rows_box)
+        size = changed.currentData()
+        # Grids bigger than SQUARE_ONLY_ABOVE must be square, so keep the other size in step.
+        if size > SQUARE_ONLY_ABOVE or other.currentData() > SQUARE_ONLY_ABOVE:
+            other.blockSignals(True)
+            other.setCurrentIndex(other.findData(size))
+            other.blockSignals(False)
         self.rows = self.rows_box.currentData()
         self.cols = self.cols_box.currentData()
         self.build_grid()

@@ -341,6 +341,7 @@
 <script>
 (() => {
   const SIZE_CHOICES = Array.from({ length: 17 }, (_, i) => i + 4); // 4 to 20
+  const SQUARE_ONLY_ABOVE = 12; // a grid with more rows or columns than this must be square
   const EXAMPLE = { rows: 4, cols: 4, letters: "SERSPATGLINESERS".split(""), removed: Array(16).fill(false) };
   const STORAGE_KEY = "solvetungle-state";
   const LONG_PRESS_MS = 450;
@@ -360,7 +361,8 @@
     try {
       const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
       if (saved && saved.letters && saved.letters.length === saved.rows * saved.cols
-          && SIZE_CHOICES.includes(saved.rows) && SIZE_CHOICES.includes(saved.cols)) {
+          && SIZE_CHOICES.includes(saved.rows) && SIZE_CHOICES.includes(saved.cols)
+          && (saved.rows === saved.cols || Math.max(saved.rows, saved.cols) <= SQUARE_ONLY_ABOVE)) {
         if (!Array.isArray(saved.removed) || saved.removed.length !== saved.letters.length) {
           saved.removed = Array(saved.letters.length).fill(false);
         }
@@ -604,8 +606,14 @@
     if (e.key === "Enter") $("search-input").blur(); // close the phone keyboard
   });
 
-  $("rows").addEventListener("change", () => resize(+$("rows").value, state.cols));
-  $("cols").addEventListener("change", () => resize(state.rows, +$("cols").value));
+  // Grids bigger than SQUARE_ONLY_ABOVE must be square, so changing one size can change the other.
+  function changeSize(changed, other) {
+    const size = +$(changed).value;
+    if (size > SQUARE_ONLY_ABOVE || +$(other).value > SQUARE_ONLY_ABOVE) $(other).value = String(size);
+    resize(+$("rows").value, +$("cols").value);
+  }
+  $("rows").addEventListener("change", () => changeSize("rows", "cols"));
+  $("cols").addEventListener("change", () => changeSize("cols", "rows"));
   $("clear").addEventListener("click", () => {
     state = {
       rows: state.rows,

@@ -6,14 +6,16 @@
 <style>
   /* Layout: one narrow column, the letter grid as the centrepiece; results replace the grid in place. */
   :root {
-    --bg: #eaeef4;
+    --bg: #f4efe3;
     --surface: #ffffff;
     --ink: #172030;
     --muted: #586477;
     --line: #c7cfdc;
     --accent: #2c55e0;
     --accent-ink: #ffffff;
-    --tile: #f8f9fc;
+    --tile: #fffdf7;
+    --solve: #9b783d;
+    --solve-ink: #ffffff;
     --tile-edge: #b9c3d3;
     --tile-removed: #3a4354;
     --tile-removed-stripe: #4b5568;
@@ -22,15 +24,15 @@
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
-      --bg: #0f131a; --surface: #171d27; --ink: #e6eaf1; --muted: #9aa5b6; --line: #2e3746;
-      --accent: #7896ff; --accent-ink: #0d1220; --tile: #1e2532; --tile-edge: #3a4558;
+      --bg: #1b1c1e; --surface: #171d27; --ink: #e6eaf1; --muted: #9aa5b6; --line: #2e3746;
+      --accent: #7896ff; --accent-ink: #0d1220; --solve: #7896ff; --solve-ink: #0d1220; --tile: #1e2532; --tile-edge: #3a4558;
       --tile-removed: #0a0d12; --tile-removed-stripe: #1b212c;
       color-scheme: dark;
     }
   }
   :root[data-theme="dark"] {
-    --bg: #0f131a; --surface: #171d27; --ink: #e6eaf1; --muted: #9aa5b6; --line: #2e3746;
-    --accent: #7896ff; --accent-ink: #0d1220; --tile: #1e2532; --tile-edge: #3a4558;
+    --bg: #1b1c1e; --surface: #171d27; --ink: #e6eaf1; --muted: #9aa5b6; --line: #2e3746;
+    --accent: #7896ff; --accent-ink: #0d1220; --solve: #7896ff; --solve-ink: #0d1220; --tile: #1e2532; --tile-edge: #3a4558;
     --tile-removed: #0a0d12; --tile-removed-stripe: #1b212c;
     color-scheme: dark;
   }
@@ -44,7 +46,7 @@
     line-height: 1.5;
   }
   main {
-    max-width: 560px;
+    max-width: 1100px;
     margin: 0 auto;
     padding-block: 20px 40px;
     padding-left: max(16px, env(safe-area-inset-left, 0px));
@@ -62,6 +64,8 @@
   h1 { font-size: 1.75rem; font-weight: 800; }
   h2 { font-size: 1.35rem; font-weight: 800; }
   .sub { color: var(--muted); margin: 2px 0 0; font-size: 0.9rem; }
+  .top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+  .theme-toggle { flex-shrink: 0; min-height: 40px; padding: 0 12px; font-size: 0.9rem; }
 
   .controls {
     display: flex;
@@ -101,9 +105,9 @@
     color: var(--ink);
   }
   button.primary {
-    background: var(--accent);
-    border-color: var(--accent);
-    color: var(--accent-ink);
+    background: var(--solve);
+    border-color: var(--solve);
+    color: var(--solve-ink);
     font-family: var(--font-display);
     font-weight: 700;
     font-size: 1.1rem;
@@ -267,17 +271,71 @@
   }
   .loading { color: var(--muted); text-align: center; }
 
+  /* ---------- side-by-side layout ---------- */
+  /* Phones: the word list sits below the grid. Wide screens: it sits to the right and scrolls on its own. */
+  .layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 28px; }
+  #grid-view { width: 100%; max-width: 560px; margin: 0 auto; }
+  .stale-note {
+    margin: 0;
+    padding: 8px 12px;
+    border-radius: 10px;
+    border: 1px solid var(--accent);
+    color: var(--ink);
+    background: var(--surface);
+    font-size: 0.85rem;
+  }
+  .word {
+    font: inherit;
+    letter-spacing: inherit;
+    min-height: 0;
+    padding: 2px 6px;
+    margin: 0 -6px;
+    border: 0;
+    border-radius: 6px;
+    background: none;
+    color: var(--ink);
+    touch-action: manipulation; /* no double-tap zoom on phones */
+    user-select: none;
+  }
+  .word:hover { background: var(--bg); }
+  .word.active { background: var(--accent); color: var(--accent-ink); }
+  .word.crossed { text-decoration: line-through 2px; color: var(--muted); }
+  .word.crossed.active { color: var(--accent-ink); }
+  .word:focus-visible { outline: 3px solid var(--accent); outline-offset: 1px; }
+  @media (min-width: 900px) {
+    .layout { grid-template-columns: minmax(0, 560px) minmax(0, 1fr); align-items: start; }
+    #grid-view { margin: 0; }
+    #results-view {
+      position: sticky;
+      top: 16px;
+      max-height: calc(100vh - 32px);
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .tile { transition: none; }
   }
 </style>
+<script>
+  // Apply a saved light/dark choice before the page draws, so it doesn't flash the other theme.
+  try {
+    const saved = localStorage.getItem("solvetungle-theme");
+    if (saved === "light" || saved === "dark") document.documentElement.dataset.theme = saved;
+  } catch (e) { /* storage unavailable: follow the system setting */ }
+</script>
 
 <main>
-  <header>
-    <h1>Wordsearch Solver</h1>
-    <p class="sub">Type the letters from your puzzle. Solve finds every word you can trace through touching squares.</p>
+  <header class="top">
+    <div>
+      <h1>Wordsearch Solver</h1>
+      <p class="sub">Type the letters from your puzzle. Solve finds every word you can trace through touching squares.</p>
+    </div>
+    <button type="button" class="theme-toggle" id="theme-toggle">Dark mode</button>
   </header>
 
+  <div class="layout">
   <section id="grid-view" aria-label="Letter grid">
     <div style="display:flex;flex-direction:column;gap:14px">
       <div class="controls">
@@ -317,9 +375,8 @@
     </div>
   </section>
 
-  <section id="results-view" aria-label="Words found" hidden>
+  <section id="results-view" aria-label="Words found">
     <div style="display:flex;flex-direction:column;gap:14px">
-      <button type="button" id="back">← Back to grid</button>
       <div class="results-head">
         <div>
           <h2 id="results-title"></h2>
@@ -332,9 +389,11 @@
           </select>
         </label>
       </div>
+      <p class="stale-note" id="stale-note" hidden>The grid has changed since you solved it. Press Solve to update this list.</p>
       <div class="groups" id="groups"></div>
     </div>
   </section>
+  </div>
 </main>
 
 <script src="solver.js"></script>
@@ -545,11 +604,15 @@
     $("solve").disabled = !bank;
     $("solve").textContent = bank ? "Solve" : "Loading word list…";
     $("example-note").hidden = !state.example;
+    $("stale-note").hidden = solvedKey === null || solvedKey === JSON.stringify(currentGrid());
     runSearch();
   }
 
   // ---------- find a word ----------
   let pathCells = []; // tile indexes of the highlighted word, in order
+  let solvedKey = null; // the grid the results list was made from
+  let crossedWords = new Set(); // words crossed out in the current results list
+  const wideQuery = matchMedia("(min-width: 900px)"); // results beside the grid, not below it
 
   function currentGrid() {
     const grid = [];
@@ -583,6 +646,8 @@
       tile.classList.toggle("path-start", pathCells[0] === i);
     });
     drawPath();
+    // Mark the word in the results list too, if it's there.
+    document.querySelectorAll(".word").forEach((b) => b.classList.toggle("active", !!path && b.dataset.word === word));
   }
 
   function drawPath() {
@@ -632,25 +697,28 @@
   function solve() {
     if (!bank || !isFull()) return;
     foundWords = findWords(currentGrid(), bank);
+    solvedKey = JSON.stringify(currentGrid());
+    crossedWords = new Set(); // each solve starts with nothing crossed out
     renderResults();
-    showResults();
+    updateStatus();
+    if (!wideQuery.matches) $("results-view").scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
   function renderResults() {
+    const container = $("groups");
+    container.innerHTML = "";
+    if (solvedKey === null) {
+      $("results-title").textContent = "Words";
+      $("results-summary").textContent = "Fill in every square and press Solve. The words will show up here.";
+      return;
+    }
+
     const total = foundWords.size;
     $("results-title").textContent = `Found ${total.toLocaleString()} word${total === 1 ? "" : "s"}`;
 
-    let longest = "";
-    for (const w of foundWords) {
-      if (w.length > longest.length || (w.length === longest.length && w < longest)) longest = w;
-    }
-    $("results-summary").innerHTML = longest
-      ? `Longest: <strong>${longest}</strong> (${longest.length} letters)`
-      : "";
+    updateSummary();
 
     const groups = sortMode === "letter" ? groupByLetter(foundWords) : groupByLength(foundWords);
-    const container = $("groups");
-    container.innerHTML = "";
     if (!groups.length) {
       container.innerHTML = '<p class="empty">No words found in this grid.</p>';
       return;
@@ -668,42 +736,80 @@
       list.className = "words";
       for (const w of g.words) {
         const li = document.createElement("li");
-        li.textContent = w;
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = crossedWords.has(w) ? "word crossed" : "word";
+        button.setAttribute("aria-pressed", crossedWords.has(w));
+        button.dataset.word = w;
+        button.textContent = w;
+        li.appendChild(button);
         list.appendChild(li);
       }
       section.append(h, list);
       container.appendChild(section);
     }
+    runSearch(); // re-mark the highlighted word in the new list
   }
 
-  // The results view lives at #results so the phone's back gesture returns to the grid.
-  let hasResults = false;
-  function showResults() {
-    hasResults = true;
-    if (location.hash !== "#results") location.hash = "results";
-    else applyView();
+  function updateSummary() {
+    let longest = "";
+    for (const w of foundWords) {
+      if (w.length > longest.length || (w.length === longest.length && w < longest)) longest = w;
+    }
+    let text = longest
+      ? `Longest: <strong>${longest}</strong> (${longest.length} letters). Click a word to see its path; double-click to cross it out.`
+      : "";
+    if (crossedWords.size) text += ` ${crossedWords.size.toLocaleString()} crossed out.`;
+    $("results-summary").innerHTML = text;
   }
-  function applyView() {
-    const onResults = hasResults && location.hash === "#results";
-    $("grid-view").hidden = onResults;
-    $("results-view").hidden = !onResults;
-    window.scrollTo(0, 0);
-  }
-  window.addEventListener("hashchange", applyView);
-  $("back").addEventListener("click", () => {
-    if (location.hash === "#results") {
-      history.back();
-      // If going back in history didn't leave #results, drop the hash directly.
-      setTimeout(() => {
-        if (location.hash === "#results") {
-          history.replaceState(null, "", location.pathname + location.search);
-          applyView();
-        }
-      }, 250);
-    } else {
-      applyView();
+
+  // Clicking a word shows its path in the grid; double-clicking (or double-tapping) crosses it out or back in.
+  // Double-clicks are timed here because phones don't reliably send dblclick for a double tap.
+  const DOUBLE_CLICK_MS = 350;
+  let lastClick = { word: null, time: 0 };
+  let scrollTimer = null;
+  $("groups").addEventListener("click", (e) => {
+    const button = e.target.closest(".word");
+    if (!button) return;
+    const w = button.dataset.word;
+    const now = Date.now();
+    if (lastClick.word === w && now - lastClick.time < DOUBLE_CLICK_MS) {
+      if (crossedWords.has(w)) crossedWords.delete(w);
+      else crossedWords.add(w);
+      button.classList.toggle("crossed", crossedWords.has(w));
+      button.setAttribute("aria-pressed", crossedWords.has(w));
+      updateSummary();
+      clearTimeout(scrollTimer); // stay on the list after crossing out
+      lastClick = { word: null, time: 0 }; // a third click starts over
+      return;
+    }
+    lastClick = { word: w, time: now };
+    $("search-input").value = w;
+    runSearch();
+    // On phones the grid is above the list: scroll up to it, but only once a second tap can't follow.
+    clearTimeout(scrollTimer);
+    if (!wideQuery.matches) {
+      scrollTimer = setTimeout(() => boardEl.scrollIntoView({ behavior: "smooth", block: "center" }), DOUBLE_CLICK_MS);
     }
   });
+
+  // ---------- light / dark mode ----------
+  // With no saved choice the page follows the system setting; the button saves an explicit one.
+  const darkQuery = matchMedia("(prefers-color-scheme: dark)");
+  function currentTheme() {
+    return document.documentElement.dataset.theme || (darkQuery.matches ? "dark" : "light");
+  }
+  function updateThemeButton() {
+    $("theme-toggle").textContent = currentTheme() === "dark" ? "Light mode" : "Dark mode";
+  }
+  $("theme-toggle").addEventListener("click", () => {
+    const next = currentTheme() === "dark" ? "light" : "dark";
+    document.documentElement.dataset.theme = next;
+    try { localStorage.setItem("solvetungle-theme", next); } catch (e) { /* not saved */ }
+    updateThemeButton();
+  });
+  darkQuery.addEventListener("change", updateThemeButton);
+  updateThemeButton();
 
   $("sort").value = sortMode;
   $("sort").addEventListener("change", () => {
@@ -713,7 +819,8 @@
   });
 
   buildGrid();
+  renderResults();
+  // Older versions showed results at #results; drop it from saved links.
   if (location.hash === "#results") history.replaceState(null, "", location.pathname + location.search);
-  applyView();
 })();
 </script>

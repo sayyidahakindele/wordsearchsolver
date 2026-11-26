@@ -1,5 +1,16 @@
-from PySide6.QtCore import QPointF, QRegularExpression, Qt, Signal
-from PySide6.QtGui import QColor, QFont, QPainter, QPen, QPolygonF, QRegularExpressionValidator
+from string import Template
+
+from PySide6.QtCore import QPointF, QRegularExpression, QSettings, Qt, Signal
+from PySide6.QtGui import (
+    QColor,
+    QFont,
+    QGuiApplication,
+    QPainter,
+    QPalette,
+    QPen,
+    QPolygonF,
+    QRegularExpressionValidator,
+)
 from PySide6.QtWidgets import (
     QApplication,
     QComboBox,
@@ -29,32 +40,71 @@ SIZE_CHOICES = range(4, 21)  # sizes offered in the Rows and Columns drop-downs
 SQUARE_ONLY_ABOVE = 12  # a grid with more rows or columns than this must be square
 SQUARE_SIZE = 80
 
-STYLE = """
+# Same colours as the web version.
+THEMES = {
+    "light": {
+        "bg": "#f4efe3", "surface": "#ffffff", "ink": "#172030", "muted": "#586477",
+        "line": "#c7cfdc", "accent": "#2c55e0", "accent_ink": "#ffffff",
+        "solve": "#9b783d", "solve_ink": "#ffffff",
+        "tile": "#fffdf7", "tile_edge": "#b9c3d3", "removed": "#3a4354",
+    },
+    "dark": {
+        "bg": "#1b1c1e", "surface": "#171d27", "ink": "#e6eaf1", "muted": "#9aa5b6",
+        "line": "#2e3746", "accent": "#7896ff", "accent_ink": "#0d1220",
+        "solve": "#7896ff", "solve_ink": "#0d1220",
+        "tile": "#1e2532", "tile_edge": "#3a4558", "removed": "#0a0d12",
+    },
+}
+
+STYLE = Template("""
 QLineEdit {
-    background-color: #e0e0e0;
-    border: 2px solid #888;
-    border-radius: 4px;
+    background-color: $tile;
+    color: $ink;
+    border: 2px solid $tile_edge;
+    border-bottom-width: 4px;
+    border-radius: 8px;
 }
 QLineEdit:focus {
-    background-color: #ffffff;
-    border-color: #4a90d9;
+    background-color: $surface;
+    border-color: $accent;
 }
 QLineEdit[removed="true"] {
-    background-color: #555;
-    border: 2px dashed #333;
+    background-color: $removed;
+    border: 2px dashed $tile_edge;
 }
 QLineEdit[path="on"], QLineEdit[path="start"] {
-    background-color: #4a90d9;
-    border-color: #2c6db5;
-    color: #ffffff;
+    background-color: $accent;
+    border-color: $accent;
+    color: $accent_ink;
 }
 QLineEdit[path="start"] {
-    border: 3px solid #172030;
+    border: 3px solid $ink;
+    border-bottom-width: 4px;
 }
 QLineEdit#searchBox {
-    background-color: #ffffff;
+    background-color: $surface;
+    border: 1px solid $line;
     padding: 6px;
     font-size: 16px;
+}
+QLineEdit#searchBox:focus {
+    border: 2px solid $accent;
+}
+QPushButton {
+    background-color: $surface;
+    color: $ink;
+    border: 1px solid $line;
+    border-radius: 8px;
+    padding: 6px 12px;
+}
+QPushButton:hover {
+    border-color: $accent;
+}
+QPushButton#solveButton {
+    background-color: $solve;
+    border-color: $solve;
+    color: $solve_ink;
+    font-weight: bold;
 }
 QPushButton#solveButton, QPushButton#backButton {
     padding: 8px;
@@ -69,7 +119,7 @@ QLabel.groupTitle {
     font-weight: bold;
     margin-top: 8px;
 }
-"""
+""")
 
 
 class LetterSquare(QLineEdit):
@@ -117,6 +167,7 @@ class PathOverlay(QWidget):
         super().__init__(parent)
         self.setAttribute(Qt.WA_TransparentForMouseEvents)
         self.squares: list[LetterSquare] = []
+        self.color = QColor(THEMES["light"]["ink"])
 
     def set_path(self, squares: list[LetterSquare]):
         self.squares = squares
@@ -129,7 +180,9 @@ class PathOverlay(QWidget):
             return
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
-        pen = QPen(QColor(23, 32, 48, 115), max(3, self.squares[0].width() * 0.12))
+        color = QColor(self.color)
+        color.setAlpha(115)
+        pen = QPen(color, max(3, self.squares[0].width() * 0.12))
         pen.setCapStyle(Qt.RoundCap)
         pen.setJoinStyle(Qt.RoundJoin)
         painter.setPen(pen)
@@ -143,7 +196,8 @@ class CreateGridWindow(QMainWindow):
         self.cols = cols
         self.squares: list[list[LetterSquare]] = []
         self.setWindowTitle("Wordsearch Solver")
-        self.setStyleSheet(STYLE)
+        self.settings = QSettings("WordsearchSolver", "WordsearchSolver")
+        self.theme = self.settings.value("theme") or self.system_theme()
 
         self.pages = QStackedWidget()
         self.grid_page = self.build_grid_page()
@@ -153,6 +207,42 @@ class CreateGridWindow(QMainWindow):
         self.setCentralWidget(self.pages)
 
         self.build_grid()
+        self.apply_theme()
+
+    # ---------- light / dark mode ----------
+
+    @staticmethod
+    def system_theme() -> str:
+        """'dark' if the operating system is set to dark mode, otherwise 'light'."""
+        try:
+            return "dark" if QGuiApplication.styleHints().colorScheme() == Qt.ColorScheme.Dark else "light"
+        except AttributeError:  # Qt older than 6.5 can't tell
+            return "light"
+
+    def toggle_theme(self):
+        self.theme = "light" if self.theme == "dark" else "dark"
+        self.settings.setValue("theme", self.theme)
+        self.apply_theme()
+
+    def apply_theme(self):
+        colors = THEMES[self.theme]
+        app = QApplication.instance()
+        app.setStyle("Fusion")  # follows the palette below on every platform
+        palette = QPalette()
+        for role, key in [
+            (QPalette.Window, "bg"), (QPalette.WindowText, "ink"),
+            (QPalette.Base, "surface"), (QPalette.AlternateBase, "tile"),
+            (QPalette.Text, "ink"), (QPalette.PlaceholderText, "muted"),
+            (QPalette.Button, "surface"), (QPalette.ButtonText, "ink"),
+            (QPalette.Highlight, "accent"), (QPalette.HighlightedText, "accent_ink"),
+            (QPalette.ToolTipBase, "surface"), (QPalette.ToolTipText, "ink"),
+        ]:
+            palette.setColor(role, QColor(colors[key]))
+        app.setPalette(palette)
+        self.setStyleSheet(STYLE.substitute(colors))
+        self.theme_button.setText("Light mode" if self.theme == "dark" else "Dark mode")
+        self.path_overlay.color = QColor(colors["ink"])
+        self.path_overlay.update()
 
     # ---------- grid page ----------
 
@@ -169,6 +259,9 @@ class CreateGridWindow(QMainWindow):
         size_bar.addWidget(QLabel("Columns:"))
         size_bar.addWidget(self.cols_box)
         size_bar.addStretch()
+        self.theme_button = QPushButton()
+        self.theme_button.clicked.connect(self.toggle_theme)
+        size_bar.addWidget(self.theme_button)
         layout.addLayout(size_bar)
 
         # The squares live in their own widget so it can be swapped out when the size changes.
@@ -242,6 +335,7 @@ class CreateGridWindow(QMainWindow):
                 row.append(sq)
             self.squares.append(row)
         self.path_overlay = PathOverlay(self.grid_widget)
+        self.path_overlay.color = QColor(THEMES[self.theme]["ink"])
         self.grid_holder.addWidget(self.grid_widget, alignment=Qt.AlignCenter)
 
         self.update_solve_button()

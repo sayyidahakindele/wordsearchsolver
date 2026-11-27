@@ -365,10 +365,10 @@
           <select id="cols"></select>
         </label>
         <span class="spacer"></span>
-        <button type="button" id="reset">Reset</button>
+        <button type="button" id="clear">Clear</button>
       </div>
 
-      <p class="example-note" id="example-note" hidden>These are example letters. Tap Reset to start your own grid.</p>
+      <p class="example-note" id="example-note" hidden>These are example letters. Tap Clear to start your own grid.</p>
 
       <div class="board" id="board">
         <div class="grid" id="grid"></div>
@@ -711,18 +711,15 @@
   }
   $("rows").addEventListener("change", () => changeSize("rows", "cols"));
   $("cols").addEventListener("change", () => changeSize("cols", "rows"));
-  // Reset: back to an empty 4×4 grid with no removed squares, and no results.
-  $("reset").addEventListener("click", () => {
-    const size = 4;
+  // Clear: empty every square (keeping the grid's size), bring back removed squares, and drop the results.
+  $("clear").addEventListener("click", () => {
     state = {
-      rows: size,
-      cols: size,
-      letters: Array(size * size).fill(""),
-      removed: Array(size * size).fill(false),
+      rows: state.rows,
+      cols: state.cols,
+      letters: Array(state.rows * state.cols).fill(""),
+      removed: Array(state.rows * state.cols).fill(false),
       example: false,
     };
-    $("rows").value = String(size);
-    $("cols").value = String(size);
     $("search-input").value = "";
     solvedKey = null;
     foundWords = new Set();

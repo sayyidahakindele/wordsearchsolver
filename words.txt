@@ -13901,6 +13901,7 @@ bicentenaries
 bicentenary
 bicentennial
 bicentennials
+bicep
 biceps
 bicepses
 bices
@@ -108656,6 +108657,7 @@ petrale
 petrales
 petrel
 petrels
+petri
 petrifaction
 petrifactions
 petrification
@@ -117101,6 +117103,7 @@ protistans
 protists
 protium
 protiums
+proto
 protocol
 protocoled
 protocoling

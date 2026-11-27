@@ -227,6 +227,23 @@
     gap: 10px 16px;
   }
   .summary { color: var(--muted); font-size: 0.9rem; margin: 2px 0 0; }
+  .list-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; }
+  .filter { display: inline-flex; align-items: center; gap: 8px; }
+  .filter input {
+    font: 600 1rem var(--font-display);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 6px 10px;
+    min-height: 40px;
+    width: 9rem;
+  }
+  .filter input::placeholder { text-transform: none; letter-spacing: 0; font-family: var(--font-body); font-weight: 400; color: var(--muted); }
+  .filter input:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+  .filter-count { margin: 0; color: var(--muted); font-size: 0.85rem; }
   .summary strong { color: var(--ink); font-family: var(--font-display); letter-spacing: 0.02em; }
   .groups { display: flex; flex-direction: column; gap: 6px; }
   .group {
@@ -348,10 +365,10 @@
           <select id="cols"></select>
         </label>
         <span class="spacer"></span>
-        <button type="button" id="clear">Clear</button>
+        <button type="button" id="reset">Reset</button>
       </div>
 
-      <p class="example-note" id="example-note" hidden>These are example letters. Tap Clear to start your own grid.</p>
+      <p class="example-note" id="example-note" hidden>These are example letters. Tap Reset to start your own grid.</p>
 
       <div class="board" id="board">
         <div class="grid" id="grid"></div>
@@ -384,12 +401,25 @@
           <h2 id="results-title"></h2>
           <p class="summary" id="results-summary"></p>
         </div>
+      </div>
+      <div class="list-tools" id="list-tools" hidden>
         <label class="field" for="sort">Sort
           <select id="sort">
             <option value="length">Length, then A–Z</option>
             <option value="letter">A–Z, then length</option>
           </select>
         </label>
+        <div class="filter">
+          <label class="field" for="filter-mode">Filter
+            <select id="filter-mode">
+              <option value="starts">Starts with</option>
+              <option value="contains">Contains</option>
+              <option value="ends">Ends with</option>
+            </select>
+          </label>
+          <input id="filter-input" type="search" aria-label="Filter letters" placeholder="Letters"
+                 autocomplete="off" autocapitalize="characters" autocorrect="off" spellcheck="false" enterkeyhint="done">
+        </div>
       </div>
       <p class="stale-note" id="stale-note" hidden>The grid has changed since you solved it. Press Solve to update this list.</p>
       <div class="groups" id="groups"></div>
@@ -681,15 +711,23 @@
   }
   $("rows").addEventListener("change", () => changeSize("rows", "cols"));
   $("cols").addEventListener("change", () => changeSize("cols", "rows"));
-  $("clear").addEventListener("click", () => {
+  // Reset: back to an empty 4×4 grid with no removed squares, and no results.
+  $("reset").addEventListener("click", () => {
+    const size = 4;
     state = {
-      rows: state.rows,
-      cols: state.cols,
-      letters: Array(state.rows * state.cols).fill(""),
-      removed: Array(state.rows * state.cols).fill(false),
+      rows: size,
+      cols: size,
+      letters: Array(size * size).fill(""),
+      removed: Array(size * size).fill(false),
       example: false,
     };
+    $("rows").value = String(size);
+    $("cols").value = String(size);
     $("search-input").value = "";
+    solvedKey = null;
+    foundWords = new Set();
+    crossedWords = new Set();
+    renderResults();
     buildGrid();
     tiles[0].focus();
   });
@@ -709,6 +747,7 @@
   function renderResults() {
     const container = $("groups");
     container.innerHTML = "";
+    $("list-tools").hidden = solvedKey === null;
     if (solvedKey === null) {
       $("results-title").textContent = "Words";
       $("results-summary").textContent = "Fill in every square and press Solve. The words will show up here.";
@@ -720,11 +759,31 @@
 
     updateSummary();
 
-    const groups = sortMode === "letter" ? groupByLetter(foundWords) : groupByLength(foundWords);
-    if (!groups.length) {
+    if (!foundWords.size) {
       container.innerHTML = '<p class="empty">No words found in this grid.</p>';
       return;
     }
+
+    // Narrow the list to words that start with, contain, or end with the filter letters.
+    const filter = cleanFilter($("filter-input").value);
+    const mode = $("filter-mode").value;
+    const matches = {
+      starts: (w) => w.startsWith(filter),
+      contains: (w) => w.includes(filter),
+      ends: (w) => w.endsWith(filter),
+    }[mode];
+    const shown = filter ? new Set([...foundWords].filter(matches)) : foundWords;
+    if (filter) {
+      const note = document.createElement("p");
+      note.className = shown.size ? "filter-count" : "empty";
+      note.textContent = shown.size
+        ? `Showing ${shown.size.toLocaleString()} of ${foundWords.size.toLocaleString()} words.`
+        : `No words ${{ starts: "start with", contains: "contain", ends: "end with" }[mode]} ${filter}.`;
+      container.appendChild(note);
+      if (!shown.size) return;
+    }
+
+    const groups = sortMode === "letter" ? groupByLetter(shown) : groupByLength(shown);
     for (const g of groups) {
       const section = document.createElement("section");
       section.className = "group";
@@ -814,6 +873,24 @@
   updateThemeButton();
 
   $("sort").value = sortMode;
+  // The filter box takes letters only; anything else is dropped as it's typed or pasted.
+  function cleanFilter(text) {
+    return text.replace(/[^a-z]/gi, "").toUpperCase();
+  }
+  $("filter-input").addEventListener("input", () => {
+    const box = $("filter-input");
+    const clean = cleanFilter(box.value);
+    if (box.value !== clean) {
+      const caret = cleanFilter(box.value.slice(0, box.selectionStart ?? box.value.length)).length;
+      box.value = clean;
+      try { box.setSelectionRange(caret, caret); } catch (e) { /* not supported for this input */ }
+    }
+    renderResults();
+  });
+  $("filter-mode").addEventListener("change", renderResults);
+  $("filter-input").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") $("filter-input").blur(); // close the phone keyboard
+  });
   $("sort").addEventListener("change", () => {
     sortMode = $("sort").value;
     saveState();
